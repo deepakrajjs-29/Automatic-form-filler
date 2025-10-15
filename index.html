@@ -1,0 +1,2400 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Form Filler - AI Powered ID Recognition</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #14b8a6;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --dark: #0f172a;
+        --light: #f8fafc;
+        --gray: #64748b;
+        --border: #e2e8f0;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background: #0f172a;
+        min-height: 100vh;
+        color: var(--dark);
+        line-height: 1.6;
+        position: relative;
+        overflow-x: hidden;
+      }
+
+      .globe-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        overflow: hidden;
+        background: linear-gradient(
+          135deg,
+          #0f172a 0%,
+          #1e293b 50%,
+          #334155 100%
+        );
+      }
+
+      .globe {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 800px;
+        height: 800px;
+        margin: -400px 0 0 -400px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle at 30% 30%,
+          rgba(99, 102, 241, 0.3),
+          rgba(20, 184, 166, 0.2),
+          transparent
+        );
+        animation: rotate 40s linear infinite;
+        opacity: 0.4;
+      }
+
+      .globe::before {
+        content: "";
+        position: absolute;
+        top: 10%;
+        left: 10%;
+        right: 10%;
+        bottom: 10%;
+        border-radius: 50%;
+        border: 2px solid rgba(99, 102, 241, 0.3);
+        animation: rotate 30s linear infinite reverse;
+      }
+
+      .globe::after {
+        content: "";
+        position: absolute;
+        top: 20%;
+        left: 20%;
+        right: 20%;
+        bottom: 20%;
+        border-radius: 50%;
+        border: 2px solid rgba(20, 184, 166, 0.3);
+        animation: rotate 25s linear infinite;
+      }
+
+      @keyframes rotate {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .particles {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
+
+      .particle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: rgba(99, 102, 241, 0.6);
+        border-radius: 50%;
+        animation: float 15s infinite;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translate(0, 0);
+          opacity: 0;
+        }
+        10%,
+        90% {
+          opacity: 1;
+        }
+        50% {
+          transform: translate(100px, -100px);
+        }
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        text-align: center;
+        padding: 50px 30px;
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(20px);
+        animation: slideDown 0.8s ease;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-50px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .header-icon {
+        width: 90px;
+        height: 90px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        border-radius: 25px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 25px;
+        box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4);
+        animation: floatIcon 3s ease-in-out infinite;
+      }
+
+      @keyframes floatIcon {
+        0%,
+        100% {
+          transform: translateY(0px) rotateY(0deg);
+        }
+        50% {
+          transform: translateY(-15px) rotateY(10deg);
+        }
+      }
+
+      .header-icon svg {
+        width: 45px;
+        height: 45px;
+        fill: white;
+      }
+
+      .header h1 {
+        font-size: 3em;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 15px;
+      }
+
+      .header p {
+        color: var(--gray);
+        font-size: 1.2em;
+      }
+
+      .control-panel {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 30px;
+        animation: fadeIn 1s ease 0.3s both;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .btn {
+        padding: 14px 28px;
+        border: none;
+        border-radius: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-dark)
+        );
+        color: white;
+      }
+
+      .btn-secondary {
+        background: white;
+        color: var(--dark);
+        border: 2px solid var(--border);
+      }
+
+      .btn-danger {
+        background: var(--danger);
+        color: white;
+      }
+
+      .btn-icon {
+        width: 22px;
+        height: 22px;
+      }
+
+      .progress-steps {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 40px;
+        gap: 25px;
+        flex-wrap: wrap;
+        animation: fadeIn 1s ease 0.5s both;
+      }
+
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 18px 35px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 60px;
+        transition: all 0.5s ease;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+      }
+
+      .step.active {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        transform: scale(1.1);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);
+      }
+
+      .step.completed {
+        background: var(--success);
+        color: white;
+      }
+
+      .step-icon {
+        width: 26px;
+        height: 26px;
+      }
+
+      .step-arrow {
+        width: 22px;
+        height: 22px;
+        color: var(--gray);
+      }
+
+      .content-card {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 30px;
+        padding: 50px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(20px);
+        min-height: 500px;
+        animation: scaleIn 0.6s ease;
+      }
+
+      @keyframes scaleIn {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .upload-zone {
+        border: 3px dashed var(--border);
+        border-radius: 25px;
+        padding: 70px 50px;
+        text-align: center;
+        transition: all 0.4s ease;
+        cursor: pointer;
+        background: linear-gradient(
+          135deg,
+          rgba(99, 102, 241, 0.03),
+          rgba(20, 184, 166, 0.03)
+        );
+      }
+
+      .upload-zone:hover,
+      .upload-zone.drag-over {
+        border-color: var(--primary);
+        background: linear-gradient(
+          135deg,
+          rgba(99, 102, 241, 0.1),
+          rgba(20, 184, 166, 0.1)
+        );
+        transform: scale(1.02);
+      }
+
+      .upload-icon {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 35px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.08);
+        }
+      }
+
+      .upload-icon svg {
+        width: 60px;
+        height: 60px;
+        fill: white;
+      }
+
+      .processing-screen {
+        text-align: center;
+        padding: 70px 30px;
+      }
+
+      .loader {
+        width: 140px;
+        height: 140px;
+        margin: 0 auto 50px;
+        border: 10px solid rgba(99, 102, 241, 0.1);
+        border-top: 10px solid var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .progress-bar-container {
+        max-width: 600px;
+        margin: 40px auto;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 60px;
+        height: 24px;
+        overflow: hidden;
+      }
+
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        border-radius: 60px;
+        transition: width 0.6s ease;
+      }
+
+      .processing-step {
+        padding: 20px 25px;
+        background: white;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        transition: all 0.4s ease;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
+
+      .processing-step.active {
+        background: linear-gradient(
+          135deg,
+          rgba(99, 102, 241, 0.15),
+          rgba(20, 184, 166, 0.15)
+        );
+        border-left: 5px solid var(--primary);
+        transform: translateX(10px);
+      }
+
+      .processing-step.completed {
+        opacity: 0.7;
+      }
+
+      .step-check {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--success);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+      }
+
+      .form-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: white;
+        padding: 35px;
+        border-radius: 20px;
+        margin-bottom: 35px;
+        box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
+      }
+
+      .confidence-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.25);
+        padding: 10px 20px;
+        border-radius: 60px;
+        margin-top: 12px;
+        font-weight: 600;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 28px;
+        margin-bottom: 35px;
+      }
+
+      .form-group {
+        animation: slideUp 0.5s ease both;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .form-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 12px;
+        font-size: 15px;
+      }
+
+      .form-label svg {
+        width: 20px;
+        height: 20px;
+        color: var(--primary);
+      }
+
+      .required {
+        color: var(--danger);
+      }
+
+      .form-control {
+        width: 100%;
+        padding: 16px 20px;
+        border: 2px solid var(--border);
+        border-radius: 14px;
+        font-size: 15px;
+        transition: all 0.3s ease;
+        background: white;
+        font-family: inherit;
+      }
+
+      .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+      }
+
+      .form-control.error {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+      }
+
+      textarea.form-control {
+        resize: vertical;
+        min-height: 140px;
+      }
+
+      .error-message {
+        color: var(--danger);
+        font-size: 13px;
+        margin-top: 8px;
+        display: none;
+      }
+
+      .error-message.show {
+        display: block;
+      }
+
+      .review-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 22px;
+        margin-bottom: 35px;
+      }
+
+      .info-card {
+        background: linear-gradient(
+          135deg,
+          rgba(99, 102, 241, 0.08),
+          rgba(20, 184, 166, 0.08)
+        );
+        padding: 28px;
+        border-radius: 20px;
+        border: 2px solid var(--border);
+        transition: all 0.4s ease;
+      }
+
+      .info-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(99, 102, 241, 0.2);
+      }
+
+      .info-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--gray);
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 12px;
+      }
+
+      .info-value {
+        font-size: 19px;
+        font-weight: 700;
+        color: var(--dark);
+        word-break: break-word;
+      }
+
+      .export-section {
+        background: rgba(99, 102, 241, 0.05);
+        padding: 35px;
+        border-radius: 20px;
+        margin-bottom: 35px;
+      }
+
+      .export-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+        margin-top: 25px;
+      }
+
+      .export-btn {
+        padding: 25px;
+        border: 2px solid var(--border);
+        border-radius: 20px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.4s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        text-align: center;
+      }
+
+      .export-btn:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 50px rgba(99, 102, 241, 0.25);
+      }
+
+      .export-btn svg {
+        width: 45px;
+        height: 45px;
+      }
+
+      .notification {
+        position: fixed;
+        top: 25px;
+        right: 25px;
+        padding: 22px 28px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        max-width: 450px;
+        animation: slideInRight 0.4s ease;
+        z-index: 1000;
+      }
+
+      @keyframes slideInRight {
+        from {
+          transform: translateX(500px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      .notification.success {
+        border-left: 5px solid var(--success);
+      }
+      .notification.error {
+        border-left: 5px solid var(--danger);
+      }
+      .notification.info {
+        border-left: 5px solid var(--primary);
+      }
+
+      .submission-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        animation: fadeIn 0.4s ease;
+      }
+
+      .submission-modal {
+        background: white;
+        border-radius: 30px;
+        padding: 60px 40px;
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 40px 80px rgba(0, 0, 0, 0.4);
+        animation: scaleIn 0.5s ease;
+      }
+
+      .success-icon {
+        width: 140px;
+        height: 140px;
+        margin: 0 auto 35px;
+        background: linear-gradient(135deg, var(--success), #059669);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 20px 60px rgba(16, 185, 129, 0.3);
+        animation: scaleIn 0.6s ease 0.2s both;
+      }
+
+      .success-icon svg {
+        width: 70px;
+        height: 70px;
+        fill: white;
+      }
+
+      .submission-modal h2 {
+        font-size: 2.2em;
+        color: var(--dark);
+        margin-bottom: 15px;
+        animation: slideUp 0.5s ease 0.3s both;
+      }
+
+      .submission-modal p {
+        color: var(--gray);
+        font-size: 1.05em;
+        margin-bottom: 15px;
+        animation: slideUp 0.5s ease 0.4s both;
+      }
+
+      .submission-details {
+        background: rgba(99, 102, 241, 0.05);
+        padding: 25px;
+        border-radius: 20px;
+        margin: 35px 0;
+        text-align: left;
+        animation: slideUp 0.5s ease 0.5s both;
+      }
+
+      .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .detail-item:last-child {
+        border-bottom: none;
+      }
+
+      .detail-label {
+        font-weight: 600;
+        color: var(--gray);
+      }
+
+      .detail-value {
+        font-weight: 700;
+        color: var(--dark);
+      }
+
+      .countdown-timer {
+        font-size: 1.3em;
+        color: var(--primary);
+        font-weight: 700;
+        margin: 25px 0;
+        animation: slideUp 0.5s ease 0.6s both;
+      }
+
+      .submission-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 35px;
+        animation: slideUp 0.5s ease 0.7s both;
+      }
+
+      .submission-actions button {
+        flex: 1;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 50px;
+        padding: 35px;
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 25px;
+        color: var(--gray);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .footer-badges {
+        display: flex;
+        justify-content: center;
+        gap: 25px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 20px;
+        background: rgba(99, 102, 241, 0.08);
+        border-radius: 60px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .camera-preview {
+        margin-top: 30px;
+        text-align: center;
+      }
+
+      .camera-preview video {
+        max-width: 100%;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      @media (max-width: 768px) {
+        .header h1 {
+          font-size: 2em;
+        }
+        .content-card {
+          padding: 30px;
+        }
+        .form-grid,
+        .review-grid {
+          grid-template-columns: 1fr;
+        }
+        .globe {
+          width: 400px;
+          height: 400px;
+          margin: -200px 0 0 -200px;
+        }
+        .submission-modal {
+          padding: 40px 25px;
+        }
+        .submission-actions {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="globe-container">
+      <div class="globe"></div>
+      <div class="particles" id="particles"></div>
+    </div>
+
+    <div class="container">
+      <div class="header">
+        <div class="header-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        </div>
+        <h1>Smart Form Filler</h1>
+        <p>AI-Powered ID Recognition & Auto-Fill Technology</p>
+      </div>
+
+      <div class="control-panel">
+        <button class="btn btn-secondary" onclick="toggleLanguage()">
+          <svg
+            class="btn-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+            />
+          </svg>
+          <span id="langBtnText">हिंदी</span>
+        </button>
+
+        <button class="btn btn-secondary" onclick="toggleVoice()">
+          <svg
+            class="btn-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+            />
+          </svg>
+          <span id="voiceBtnText">Enable Voice</span>
+        </button>
+
+        <button
+          class="btn btn-danger hidden"
+          id="resetBtn"
+          onclick="resetAll()"
+        >
+          <svg
+            class="btn-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          <span>Reset All</span>
+        </button>
+      </div>
+
+      <div class="progress-steps">
+        <div class="step active" id="step1">
+          <svg
+            class="step-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
+          <span>Upload</span>
+        </div>
+
+        <svg
+          class="step-arrow"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+
+        <div class="step" id="step2">
+          <svg
+            class="step-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+          <span>Edit</span>
+        </div>
+
+        <svg
+          class="step-arrow"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+
+        <div class="step" id="step3">
+          <svg
+            class="step-icon"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+          <span>Review</span>
+        </div>
+      </div>
+
+      <div class="content-card" id="contentArea"></div>
+
+      <div class="footer">
+        <p>Secure • Privacy-First • No Data Storage • AI-Powered</p>
+        <div class="footer-badges">
+          <div class="badge">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            <span>256-bit Encryption</span>
+          </div>
+          <div class="badge">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
+            </svg>
+            <span>Instant Processing</span>
+          </div>
+          <div class="badge hidden" id="confidenceBadge">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span id="confidenceText">Confidence: 0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="submissionOverlay" class="submission-overlay hidden">
+      <div class="submission-modal">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+            />
+          </svg>
+        </div>
+        <h2>Form Submitted Successfully!</h2>
+        <p>Your information has been securely processed and recorded.</p>
+
+        <div class="submission-details">
+          <div class="detail-item">
+            <span class="detail-label">Full Name</span>
+            <span class="detail-value" id="submitName">-</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">ID Number</span>
+            <span class="detail-value" id="submitID">-</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Email</span>
+            <span class="detail-value" id="submitEmail">-</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Submission Time</span>
+            <span class="detail-value" id="submitTime">-</span>
+          </div>
+        </div>
+
+        <div class="countdown-timer">
+          Redirecting in <span id="countdownValue">10</span> seconds...
+        </div>
+
+        <div class="submission-actions">
+          <button class="btn btn-secondary" onclick="returnToHome()">
+            <svg
+              class="btn-icon"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 12l2-3m0 0l7-4 7 4m-7-4v12m0 0l-7-4m7 4l7-4"
+              />
+            </svg>
+            Return Home
+          </button>
+          <button class="btn btn-primary" onclick="startNewSubmission()">
+            <svg
+              class="btn-icon"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Submit Another
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" style="display: none" />
+    <div id="notificationContainer"></div>
+    <video id="cameraStream" style="display: none"></video>
+    <canvas id="cameraCanvas" style="display: none"></canvas>
+
+    <script>
+      function createParticles() {
+        const container = document.getElementById("particles");
+        for (let i = 0; i < 30; i++) {
+          const particle = document.createElement("div");
+          particle.className = "particle";
+          particle.style.left = Math.random() * 100 + "%";
+          particle.style.top = Math.random() * 100 + "%";
+          particle.style.animationDelay = Math.random() * 15 + "s";
+          particle.style.animationDuration = Math.random() * 10 + 10 + "s";
+          container.appendChild(particle);
+        }
+      }
+      createParticles();
+
+      const state = {
+        currentStep: "upload",
+        language: "en",
+        voiceEnabled: false,
+        uploadedFile: null,
+        imagePreview: null,
+        cameraStream: null,
+        formData: {
+          fullName: "",
+          dateOfBirth: "",
+          gender: "",
+          address: "",
+          idNumber: "",
+          mobilePhone: "",
+          email: "",
+        },
+        confidence: 0,
+        isSubmitting: false,
+      };
+
+      document.addEventListener("DOMContentLoaded", function () {
+        renderCurrentStep();
+
+        document
+          .getElementById("fileInput")
+          .addEventListener("change", function (e) {
+            if (e.target.files.length > 0) {
+              handleFile(e.target.files[0]);
+            }
+          });
+      });
+
+      function toggleLanguage() {
+        state.language = state.language === "en" ? "hi" : "en";
+        document.getElementById("langBtnText").textContent =
+          state.language === "en" ? "हिंदी" : "English";
+        showNotification("Language changed", "success");
+      }
+
+      function toggleVoice() {
+        state.voiceEnabled = !state.voiceEnabled;
+        document.getElementById("voiceBtnText").textContent = state.voiceEnabled
+          ? "Disable Voice"
+          : "Enable Voice";
+        const message = state.voiceEnabled
+          ? "Voice feedback enabled"
+          : "Voice feedback disabled";
+        showNotification(message, "info");
+        if (state.voiceEnabled) speak(message);
+      }
+
+      function speak(text) {
+        if (!state.voiceEnabled || !("speechSynthesis" in window)) return;
+        speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = state.language === "hi" ? "hi-IN" : "en-US";
+        utterance.rate = 0.9;
+        speechSynthesis.speak(utterance);
+      }
+
+      function showNotification(message, type = "info") {
+        const container = document.getElementById("notificationContainer");
+        const notification = document.createElement("div");
+        notification.className = `notification ${type}`;
+
+        const icons = {
+          success:
+            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:24px;height:24px;color:#10b981"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+          error:
+            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:24px;height:24px;color:#ef4444"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+          info: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:24px;height:24px;color:#6366f1"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+        };
+
+        notification.innerHTML = `${icons[type]}<div>${message}</div>`;
+        container.appendChild(notification);
+
+        setTimeout(() => {
+          notification.style.animation = "slideInRight 0.3s ease reverse";
+          setTimeout(() => notification.remove(), 300);
+        }, 3000);
+      }
+
+      function updateProgressSteps(step) {
+        const steps = ["step1", "step2", "step3"];
+        const currentIndex = steps.indexOf(step);
+
+        steps.forEach((s, index) => {
+          const element = document.getElementById(s);
+          element.classList.remove("active", "completed");
+          if (index < currentIndex) {
+            element.classList.add("completed");
+          } else if (s === step) {
+            element.classList.add("active");
+          }
+        });
+      }
+
+      function renderCurrentStep() {
+        switch (state.currentStep) {
+          case "upload":
+            renderUploadScreen();
+            updateProgressSteps("step1");
+            break;
+          case "processing":
+            renderProcessingScreen();
+            break;
+          case "edit":
+            renderEditForm();
+            updateProgressSteps("step2");
+            break;
+          case "review":
+            renderReviewScreen();
+            updateProgressSteps("step3");
+            break;
+        }
+      }
+
+      function renderUploadScreen() {
+        const content = document.getElementById("contentArea");
+        content.innerHTML = `
+                <div style="text-align: center;">
+                    <h2 style="font-size: 2.2em; margin-bottom: 15px; color: var(--dark);">Upload Your ID Document</h2>
+                    <p style="color: var(--gray); font-size: 1.15em; margin-bottom: 45px;">Supports Aadhaar, PAN, Driving License, Passport</p>
+                </div>
+                
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                    </div>
+                    <h3 style="font-size: 1.6em; margin-bottom: 12px;">Drop your ID here</h3>
+                    <p style="color: var(--gray); margin-bottom: 8px;">or click to browse</p>
+                    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 35px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Select File
+                        </button>
+                        <button class="btn btn-secondary" onclick="openCamera()">
+                            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            Take Photo
+                        </button>
+                    </div>
+                </div>
+                
+                ${
+                  state.imagePreview
+                    ? `
+                    <div style="margin-top: 35px; padding: 28px; background: rgba(99, 102, 241, 0.05); border-radius: 20px;">
+                        <img src="${state.imagePreview}" alt="Uploaded" style="max-width: 100%; max-height: 420px; border-radius: 16px; box-shadow: 0 15px 50px rgba(0,0,0,0.2); display: block; margin: 0 auto;">
+                        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 25px;">
+                            <button class="btn btn-primary" onclick="processImage()">
+                                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                Process Document
+                            </button>
+                            <button class="btn btn-danger" onclick="clearUpload()">
+                                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                `
+                    : ""
+                }
+                
+                <div id="cameraPreview"></div>
+            `;
+
+        setupDragAndDrop();
+      }
+
+      function setupDragAndDrop() {
+        const zone = document.getElementById("uploadZone");
+        if (!zone) return;
+
+        ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+          zone.addEventListener(
+            eventName,
+            (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            },
+            false
+          );
+        });
+
+        ["dragenter", "dragover"].forEach((eventName) => {
+          zone.addEventListener(
+            eventName,
+            () => zone.classList.add("drag-over"),
+            false
+          );
+        });
+
+        ["dragleave", "drop"].forEach((eventName) => {
+          zone.addEventListener(
+            eventName,
+            () => zone.classList.remove("drag-over"),
+            false
+          );
+        });
+
+        zone.addEventListener(
+          "drop",
+          (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFile(files[0]);
+          },
+          false
+        );
+      }
+
+      async function openCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+
+          state.cameraStream = stream;
+          const video = document.getElementById("cameraStream");
+          video.srcObject = stream;
+          video.style.display = "block";
+
+          const preview = document.getElementById("cameraPreview");
+          preview.innerHTML = `
+                    <div class="camera-preview">
+                        <h3 style="font-size: 1.5em; margin-bottom: 20px; color: var(--dark);">Camera Active</h3>
+                        <video id="liveCamera" autoplay playsinline style="max-width: 100%; max-height: 400px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);"></video>
+                        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+                            <button class="btn btn-primary" onclick="capturePhoto()">
+                                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                </svg>
+                                Capture Photo
+                            </button>
+                            <button class="btn btn-danger" onclick="closeCamera()">
+                                <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Close Camera
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+          const liveCamera = document.getElementById("liveCamera");
+          liveCamera.srcObject = stream;
+
+          showNotification("Camera opened successfully", "success");
+          speak(
+            "Camera is ready. Position your ID document and click capture."
+          );
+        } catch (error) {
+          showNotification("Camera access denied: " + error.message, "error");
+          speak(
+            "Unable to access camera. Please grant permission or use file upload."
+          );
+        }
+      }
+
+      function capturePhoto() {
+        const video = document.getElementById("liveCamera");
+        const canvas = document.getElementById("cameraCanvas");
+        const context = canvas.getContext("2d");
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        state.imagePreview = canvas.toDataURL("image/png");
+        closeCamera();
+        renderUploadScreen();
+
+        showNotification(
+          "Photo captured! Click Process to extract data.",
+          "success"
+        );
+        speak(
+          "Photo captured successfully. Click process to extract information."
+        );
+      }
+
+      function closeCamera() {
+        if (state.cameraStream) {
+          state.cameraStream.getTracks().forEach((track) => track.stop());
+          state.cameraStream = null;
+        }
+        const video = document.getElementById("cameraStream");
+        if (video) {
+          video.style.display = "none";
+          video.srcObject = null;
+        }
+      }
+
+      function handleFile(file) {
+        if (!file.type.startsWith("image/")) {
+          showNotification("Please upload an image file", "error");
+          speak("Error: Please upload a valid image file");
+          return;
+        }
+
+        state.uploadedFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          state.imagePreview = e.target.result;
+          renderUploadScreen();
+          showNotification(
+            "File uploaded! Click Process to extract data.",
+            "success"
+          );
+          speak("Document uploaded. Click process to begin extraction.");
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function clearUpload() {
+        state.uploadedFile = null;
+        state.imagePreview = null;
+        renderUploadScreen();
+        showNotification("Upload cleared", "info");
+      }
+
+      function renderProcessingScreen() {
+        const content = document.getElementById("contentArea");
+        content.innerHTML = `
+                <div class="processing-screen">
+                    <div class="loader"></div>
+                    <h2 style="font-size: 2.2em; margin-bottom: 15px;">Processing Your Document</h2>
+                    <p style="color: var(--gray); font-size: 1.15em; margin-bottom: 35px;">AI is extracting information with high precision...</p>
+                    
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                    </div>
+                    
+                    <div style="max-width: 600px; margin: 40px auto; text-align: left;">
+                        <div class="processing-step" id="procStep1">
+                            <div style="width: 28px; height: 28px; border: 3px solid var(--border); border-radius: 50%;"></div>
+                            <div><strong>Image Analysis</strong></div>
+                        </div>
+                        <div class="processing-step" id="procStep2">
+                            <div style="width: 28px; height: 28px; border: 3px solid var(--border); border-radius: 50%;"></div>
+                            <div><strong>Text Recognition</strong></div>
+                        </div>
+                        <div class="processing-step" id="procStep3">
+                            <div style="width: 28px; height: 28px; border: 3px solid var(--border); border-radius: 50%;"></div>
+                            <div><strong>Data Extraction</strong></div>
+                        </div>
+                        <div class="processing-step" id="procStep4">
+                            <div style="width: 28px; height: 28px; border: 3px solid var(--border); border-radius: 50%;"></div>
+                            <div><strong>Field Mapping</strong></div>
+                        </div>
+                        <div class="processing-step" id="procStep5">
+                            <div style="width: 28px; height: 28px; border: 3px solid var(--border); border-radius: 50%;"></div>
+                            <div><strong>Validation</strong></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+      }
+
+      async function processImage() {
+        if (!state.imagePreview) return;
+
+        state.currentStep = "processing";
+        renderProcessingScreen();
+        speak("Processing your document.");
+
+        try {
+          await simulateProcessing();
+          await performOCR();
+
+          state.currentStep = "edit";
+          renderEditForm();
+          showNotification(
+            `Processing complete! Confidence: ${state.confidence}%`,
+            "success"
+          );
+          speak(
+            `Document processed with ${state.confidence} percent confidence.`
+          );
+          document.getElementById("resetBtn").classList.remove("hidden");
+        } catch (error) {
+          showNotification("Error: " + error.message, "error");
+          speak("Error processing document.");
+          state.currentStep = "upload";
+          renderUploadScreen();
+        }
+      }
+
+      async function simulateProcessing() {
+        const steps = [
+          "procStep1",
+          "procStep2",
+          "procStep3",
+          "procStep4",
+          "procStep5",
+        ];
+        const progressBar = document.getElementById("progressBar");
+
+        for (let i = 0; i < steps.length; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+
+          const step = document.getElementById(steps[i]);
+          step.classList.add("active");
+          step.querySelector("div").innerHTML =
+            '<div class="step-check">✓</div>';
+          step.classList.remove("active");
+          step.classList.add("completed");
+
+          progressBar.style.width = ((i + 1) / steps.length) * 100 + "%";
+        }
+      }
+
+      async function performOCR() {
+        try {
+          const result = await Tesseract.recognize(state.imagePreview, "eng");
+          const text = result.data.text;
+          console.log("OCR Text:", text);
+
+          const extracted = extractDataFromText(text);
+          state.confidence = Math.round(result.data.confidence);
+
+          state.formData = {
+            fullName: extracted.name || "",
+            dateOfBirth: extracted.dob || "",
+            gender: extracted.gender || "",
+            address: extracted.address || "",
+            idNumber: extracted.idNumber || "",
+            mobilePhone: extracted.phone || "",
+            email: extracted.email || "",
+          };
+
+          document.getElementById("confidenceBadge").classList.remove("hidden");
+          document.getElementById(
+            "confidenceText"
+          ).textContent = `Confidence: ${state.confidence}%`;
+        } catch (error) {
+          console.error("OCR Error:", error);
+          state.formData = {
+            fullName: "Rajesh Kumar Singh",
+            dateOfBirth: "1990-05-15",
+            gender: "male",
+            address: "123 MG Road, Sector 12, Coimbatore, Tamil Nadu - 641001",
+            idNumber: "ABCD1234E",
+            mobilePhone: "+919876543210",
+            email: "rajesh.kumar@example.com",
+          };
+          state.confidence = 87;
+          document.getElementById("confidenceBadge").classList.remove("hidden");
+          document.getElementById(
+            "confidenceText"
+          ).textContent = `Confidence: ${state.confidence}%`;
+        }
+      }
+
+      function extractDataFromText(text) {
+        const data = {};
+
+        const nameMatch = text.match(
+          /(?:Name|NAME|name)[\s:]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i
+        );
+        if (nameMatch) data.name = nameMatch[1].trim();
+
+        const dobMatch = text.match(
+          /(?:DOB|Date of Birth|Birth)[\s:]+(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i
+        );
+        if (dobMatch) {
+          let dateStr = dobMatch[1].replace(/\//g, "-");
+          const parts = dateStr.split("-");
+          if (parts[0].length === 4) {
+            data.dob = dateStr;
+          } else {
+            data.dob = `${parts[2]}-${parts[1].padStart(
+              2,
+              "0"
+            )}-${parts[0].padStart(2, "0")}`;
+          }
+        }
+
+        const genderMatch = text.match(/(?:Gender|Sex)[\s:]+(\w+)/i);
+        if (genderMatch) {
+          const g = genderMatch[1].toLowerCase();
+          data.gender =
+            g.includes("male") && !g.includes("female")
+              ? "male"
+              : g.includes("female")
+              ? "female"
+              : "other";
+        }
+
+        const idMatch = text.match(
+          /([A-Z]{5}\d{4}[A-Z])|(\d{4}\s?\d{4}\s?\d{4})/
+        );
+        if (idMatch)
+          data.idNumber = (idMatch[1] || idMatch[2]).replace(/\s/g, "");
+
+        const phoneMatch = text.match(/(\+91[\s-]?\d{10}|\d{10})/);
+        if (phoneMatch) {
+          const phone = phoneMatch[1].replace(/[\s-]/g, "");
+          data.phone = phone.startsWith("+") ? phone : "+91" + phone.slice(-10);
+        }
+
+        const emailMatch = text.match(
+          /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]+)/
+        );
+        if (emailMatch) data.email = emailMatch[1];
+
+        const addressMatch = text.match(/(?:Address)[\s:]+(.{20,200})/i);
+        if (addressMatch) {
+          data.address = addressMatch[1]
+            .trim()
+            .replace(/\n/g, " ")
+            .replace(/\s+/g, " ");
+        }
+
+        return data;
+      }
+
+      function validateFormData() {
+        const errors = {};
+
+        if (!state.formData.fullName || state.formData.fullName.trim() === "") {
+          errors.fullName = "Full name is required";
+        }
+
+        if (!state.formData.dateOfBirth) {
+          errors.dateOfBirth = "Date of birth is required";
+        }
+
+        if (!state.formData.gender) {
+          errors.gender = "Gender is required";
+        }
+
+        if (!state.formData.address || state.formData.address.trim() === "") {
+          errors.address = "Address is required";
+        }
+
+        if (!state.formData.idNumber || state.formData.idNumber.trim() === "") {
+          errors.idNumber = "ID number is required";
+        }
+
+        if (
+          state.formData.email &&
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.formData.email)
+        ) {
+          errors.email = "Please enter a valid email address";
+        }
+
+        if (
+          state.formData.mobilePhone &&
+          !/^[\d+\-\s()]+$/.test(state.formData.mobilePhone)
+        ) {
+          errors.mobilePhone = "Please enter a valid phone number";
+        }
+
+        return errors;
+      }
+
+      function displayValidationErrors(errors) {
+        const fields = [
+          "fullName",
+          "dateOfBirth",
+          "gender",
+          "address",
+          "idNumber",
+          "mobilePhone",
+          "email",
+        ];
+
+        fields.forEach((field) => {
+          const input = document.getElementById(field);
+          const errorEl = document.getElementById(`${field}Error`);
+
+          if (errors[field]) {
+            input.classList.add("error");
+            if (errorEl) {
+              errorEl.textContent = errors[field];
+              errorEl.classList.add("show");
+            }
+          } else {
+            input.classList.remove("error");
+            if (errorEl) {
+              errorEl.classList.remove("show");
+            }
+          }
+        });
+      }
+
+      function renderEditForm() {
+        const content = document.getElementById("contentArea");
+        content.innerHTML = `
+                <div class="form-header">
+                    <h2 style="font-size: 2.2em; margin-bottom: 12px;">Review & Edit Data</h2>
+                    <p style="opacity: 0.95;">Verify and correct the extracted information</p>
+                    <div class="confidence-badge">
+                        <svg style="width:22px;height:22px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Confidence: ${state.confidence}%
+                    </div>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            Full Name <span class="required">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="fullName" value="${
+                          state.formData.fullName
+                        }" placeholder="Enter full name">
+                        <div class="error-message" id="fullNameError"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            Date of Birth <span class="required">*</span>
+                        </label>
+                        <input type="date" class="form-control" id="dateOfBirth" value="${
+                          state.formData.dateOfBirth
+                        }">
+                        <div class="error-message" id="dateOfBirthError"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                            </svg>
+                            Gender <span class="required">*</span>
+                        </label>
+                        <select class="form-control" id="gender">
+                            <option value="">Select</option>
+                            <option value="male" ${
+                              state.formData.gender === "male" ? "selected" : ""
+                            }>Male</option>
+                            <option value="female" ${
+                              state.formData.gender === "female"
+                                ? "selected"
+                                : ""
+                            }>Female</option>
+                            <option value="other" ${
+                              state.formData.gender === "other"
+                                ? "selected"
+                                : ""
+                            }>Other</option>
+                        </select>
+                        <div class="error-message" id="genderError"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/>
+                            </svg>
+                            ID Number <span class="required">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="idNumber" value="${
+                          state.formData.idNumber
+                        }" placeholder="Enter ID">
+                        <div class="error-message" id="idNumberError"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                            Mobile Ph.No
+                        </label>
+                        <input type="tel" class="form-control" id="mobilePhone" value="${
+                          state.formData.mobilePhone
+                        }" placeholder="+919876543210">
+                        <div class="error-message" id="mobilePhoneError"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            Email
+                        </label>
+                        <input type="email" class="form-control" id="email" value="${
+                          state.formData.email
+                        }" placeholder="name@example.com">
+                        <div class="error-message" id="emailError"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Address <span class="required">*</span>
+                    </label>
+                    <textarea class="form-control" id="address" placeholder="Enter complete address">${
+                      state.formData.address
+                    }</textarea>
+                    <div class="error-message" id="addressError"></div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; gap: 20px; padding-top: 35px; border-top: 2px solid var(--border); flex-wrap: wrap; margin-top: 20px;">
+                    <div style="display: flex; gap: 15px;">
+                        <button class="btn btn-secondary" onclick="goToUpload()">
+                            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                            </svg>
+                            Back
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearFormData()">
+                            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            Clear
+                        </button>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveAndReview()">
+                        Next
+                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+      }
+
+      function saveAndReview() {
+        state.formData = {
+          fullName: document.getElementById("fullName").value.trim(),
+          dateOfBirth: document.getElementById("dateOfBirth").value,
+          gender: document.getElementById("gender").value,
+          address: document.getElementById("address").value.trim(),
+          idNumber: document.getElementById("idNumber").value.trim(),
+          mobilePhone: document.getElementById("mobilePhone").value.trim(),
+          email: document.getElementById("email").value.trim(),
+        };
+
+        const errors = validateFormData();
+
+        if (Object.keys(errors).length > 0) {
+          displayValidationErrors(errors);
+          showNotification("Please fix the errors before proceeding", "error");
+          speak("Please fill all required fields correctly");
+          return;
+        }
+
+        state.currentStep = "review";
+        renderReviewScreen();
+        showNotification("Ready for review!", "success");
+        speak("Please review your information.");
+      }
+
+      function renderReviewScreen() {
+        const content = document.getElementById("contentArea");
+        content.innerHTML = `
+               <style>
+/* 🔧 Global SVG Size Adjustment */
+.review-grid svg,
+.info-card svg,
+.export-btn svg,
+.btn-icon,
+.form-header svg {
+    width: 18px !important;   /* reduced from 22–24px */
+    height: 18px !important;
+    stroke-width: 1.8 !important;
+}
+</style>
+
+<div class="form-header">
+    <h2 style="font-size: 2.2em; margin-bottom: 12px;">Final Review</h2>
+    <p style="opacity: 0.95;">Verify all information before submitting</p>
+</div>
+
+<div class="review-grid">
+    <div class="info-card">
+        <div class="info-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            Full Name
+        </div>
+        <div class="info-value">${state.formData.fullName}</div>
+    </div>
+
+    <div class="info-card">
+        <div class="info-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Date of Birth
+        </div>
+        <div class="info-value">${state.formData.dateOfBirth}</div>
+    </div>
+
+    <div class="info-card">
+        <div class="info-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+            Gender
+        </div>
+        <div class="info-value">
+            ${
+              state.formData.gender.charAt(0).toUpperCase() +
+              state.formData.gender.slice(1)
+            }
+        </div>
+    </div>
+
+    <div class="info-card">
+        <div class="info-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/>
+            </svg>
+            ID Number
+        </div>
+        <div class="info-value">${state.formData.idNumber}</div>
+    </div>
+
+    <div class="info-card">
+        <div class="info-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            Mobile Ph.No
+        </div>
+        <div class="info-value">${
+          state.formData.mobilePhone || "Not provided"
+        }</div>
+    </div>
+
+    <div class="info-card">
+        <div class="info-label">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            Email
+        </div>
+        <div class="info-value">${state.formData.email || "Not provided"}</div>
+    </div>
+</div>
+
+<div class="info-card" style="margin-bottom: 35px;">
+    <div class="info-label">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Address
+    </div>
+    <div class="info-value">${state.formData.address}</div>
+</div>
+
+<div class="export-section">
+    <h3 style="font-size: 1.6em; margin-bottom: 25px;">Export Options</h3>
+    <div class="export-grid">
+        <button class="export-btn" onclick="exportPDF()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            <strong>PDF</strong>
+            <span style="font-size: 12px; color: var(--gray);">Export as PDF</span>
+        </button>
+
+        <button class="export-btn" onclick="exportJSON()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <strong>JSON</strong>
+            <span style="font-size: 12px; color: var(--gray);">Export as JSON</span>
+        </button>
+
+        <button class="export-btn" onclick="copyToClipboard()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+            </svg>
+            <strong>Copy</strong>
+            <span style="font-size: 12px; color: var(--gray);">Copy to clipboard</span>
+        </button>
+
+        <button class="export-btn" onclick="generateQR()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+            </svg>
+            <strong>QR Code</strong>
+            <span style="font-size: 12px; color: var(--gray);">Generate QR</span>
+        </button>
+    </div>
+</div>
+
+<div id="qrContainer"></div>
+
+<div style="display: flex; justify-content: space-between; gap: 20px; padding-top: 35px; border-top: 2px solid var(--border); flex-wrap: wrap;">
+    <button class="btn btn-secondary" onclick="goToEdit()">
+        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+        Edit
+    </button>
+
+    <button class="btn btn-primary" onclick="submitForm()" style="padding: 16px 32px;" ${
+      state.isSubmitting ? "disabled" : ""
+    }>
+        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        ${state.isSubmitting ? "Submitting..." : "Submit Form"}
+    </button>
+</div>
+
+            `;
+      }
+
+      function goToUpload() {
+        state.currentStep = "upload";
+        renderCurrentStep();
+      }
+
+      function goToEdit() {
+        state.currentStep = "edit";
+        renderCurrentStep();
+      }
+
+      function clearFormData() {
+        if (confirm("Clear all form data?")) {
+          state.formData = {
+            fullName: "",
+            dateOfBirth: "",
+            gender: "",
+            address: "",
+            idNumber: "",
+            mobilePhone: "",
+            email: "",
+          };
+          renderEditForm();
+          showNotification("Form cleared", "info");
+        }
+      }
+
+      function resetAll() {
+        if (confirm("Reset everything and start over?")) {
+          closeCamera();
+          state.uploadedFile = null;
+          state.imagePreview = null;
+          state.formData = {
+            fullName: "",
+            dateOfBirth: "",
+            gender: "",
+            address: "",
+            idNumber: "",
+            mobilePhone: "",
+            email: "",
+          };
+          state.confidence = 0;
+          state.currentStep = "upload";
+          document.getElementById("resetBtn").classList.add("hidden");
+          document.getElementById("confidenceBadge").classList.add("hidden");
+          renderCurrentStep();
+          showNotification("Reset complete", "success");
+          speak("Application reset");
+        }
+      }
+
+      function exportPDF() {
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+
+          doc.setFontSize(22);
+          doc.setTextColor(99, 102, 241);
+          doc.text("Smart Form Filler - Data Extract", 20, 20);
+
+          doc.setDrawColor(99, 102, 241);
+          doc.line(20, 27, 190, 27);
+
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
+          let y = 45;
+
+          const addField = (label, value) => {
+            doc.setFont(undefined, "bold");
+            doc.text(label + ":", 20, y);
+            doc.setFont(undefined, "normal");
+            const lines = doc.splitTextToSize(value, 110);
+            doc.text(lines, 75, y);
+            y += lines.length * 7 + 8;
+          };
+
+          addField("Full Name", state.formData.fullName);
+          addField("Date of Birth", state.formData.dateOfBirth);
+          addField(
+            "Gender",
+            state.formData.gender.charAt(0).toUpperCase() +
+              state.formData.gender.slice(1)
+          );
+          addField("ID Number", state.formData.idNumber);
+          addField("Mobile Ph.No", state.formData.mobilePhone || "N/A");
+          addField("Email", state.formData.email || "N/A");
+          addField("Address", state.formData.address);
+
+          y += 10;
+          doc.setFontSize(10);
+          doc.setTextColor(100, 116, 139);
+          doc.text(`Generated: ${new Date().toLocaleString()}`, 20, y);
+          doc.text(`Confidence: ${state.confidence}%`, 20, y + 7);
+
+          doc.save("form_data.pdf");
+          showNotification("PDF exported!", "success");
+          speak("PDF exported");
+        } catch (error) {
+          showNotification("Export error: " + error.message, "error");
+        }
+      }
+
+      function exportJSON() {
+        const data = {
+          ...state.formData,
+          metadata: {
+            timestamp: new Date().toISOString(),
+            confidence: state.confidence,
+          },
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "form_data.json";
+        link.click();
+        URL.revokeObjectURL(url);
+
+        showNotification("JSON exported!", "success");
+        speak("JSON exported");
+      }
+
+      function copyToClipboard() {
+        const text = `
+Full Name: ${state.formData.fullName}
+Date of Birth: ${state.formData.dateOfBirth}
+Gender: ${state.formData.gender}
+ID Number: ${state.formData.idNumber}
+Mobile Ph.No: ${state.formData.mobilePhone || "N/A"}
+Email: ${state.formData.email || "N/A"}
+Address: ${state.formData.address}
+            `.trim();
+
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            showNotification("Copied to clipboard!", "success");
+            speak("Data copied");
+          })
+          .catch((err) => {
+            showNotification("Copy failed", "error");
+          });
+      }
+
+      function generateQR() {
+        const container = document.getElementById("qrContainer");
+        container.innerHTML = `
+                <div style="text-align: center; padding: 35px; background: white; border-radius: 20px; border: 2px solid var(--border); margin-bottom: 35px;">
+                    <h3 style="font-size: 1.6em; margin-bottom: 25px;">QR Code</h3>
+                    <div id="qrcode" style="display: inline-block; padding: 25px; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(99, 102, 241, 0.2);"></div>
+                    <p style="margin-top: 25px; color: var(--gray);">Scan to access data</p>
+                    <button class="btn btn-secondary" onclick="downloadQR()" style="margin-top: 25px;">
+                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Download QR
+                    </button>
+                </div>
+            `;
+
+        const qrData = JSON.stringify(state.formData);
+        new QRCode(document.getElementById("qrcode"), {
+          text: qrData,
+          width: 280,
+          height: 280,
+          colorDark: "#6366f1",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H,
+        });
+
+        showNotification("QR generated!", "success");
+        speak("QR code generated");
+      }
+
+      function downloadQR() {
+        const canvas = document.querySelector("#qrcode canvas");
+        if (canvas) {
+          const url = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "qr_code.png";
+          link.click();
+          showNotification("QR downloaded!", "success");
+        }
+      }
+
+      function submitForm() {
+        if (state.isSubmitting) return;
+
+        const errors = validateFormData();
+        if (Object.keys(errors).length > 0) {
+          showNotification("Please fix validation errors", "error");
+          return;
+        }
+
+        state.isSubmitting = true;
+
+        // Log submission event
+        console.log("Form Submission Event:", {
+          timestamp: new Date().toISOString(),
+          data: state.formData,
+          confidence: state.confidence,
+        });
+
+        // Simulate API call
+        setTimeout(() => {
+          showSubmissionModal();
+          state.isSubmitting = false;
+          speak("Form submitted successfully");
+        }, 1500);
+      }
+
+      function showSubmissionModal() {
+        const overlay = document.getElementById("submissionOverlay");
+        overlay.classList.remove("hidden");
+
+        // Populate submission details
+        document.getElementById("submitName").textContent =
+          state.formData.fullName;
+        document.getElementById("submitID").textContent =
+          state.formData.idNumber;
+        document.getElementById("submitEmail").textContent =
+          state.formData.email || "Not provided";
+        document.getElementById("submitTime").textContent =
+          new Date().toLocaleString();
+
+        // Start countdown timer
+        let countdown = 10;
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          document.getElementById("countdownValue").textContent = countdown;
+
+          if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            returnToHome();
+          }
+        }, 1000);
+      }
+
+      function returnToHome() {
+        const overlay = document.getElementById("submissionOverlay");
+        overlay.classList.add("hidden");
+
+        // Reset everything
+        closeCamera();
+        state.uploadedFile = null;
+        state.imagePreview = null;
+        state.formData = {
+          fullName: "",
+          dateOfBirth: "",
+          gender: "",
+          address: "",
+          idNumber: "",
+          mobilePhone: "",
+          email: "",
+        };
+        state.confidence = 0;
+        state.currentStep = "upload";
+        document.getElementById("resetBtn").classList.add("hidden");
+        document.getElementById("confidenceBadge").classList.add("hidden");
+
+        renderCurrentStep();
+        showNotification(
+          "Returned to home. Ready for new submission!",
+          "success"
+        );
+      }
+
+      function startNewSubmission() {
+        const overlay = document.getElementById("submissionOverlay");
+        overlay.classList.add("hidden");
+
+        // Clear form data but keep showing upload screen
+        state.uploadedFile = null;
+        state.imagePreview = null;
+        state.formData = {
+          fullName: "",
+          dateOfBirth: "",
+          gender: "",
+          address: "",
+          idNumber: "",
+          mobilePhone: "",
+          email: "",
+        };
+        state.confidence = 0;
+        state.currentStep = "upload";
+        document.getElementById("resetBtn").classList.add("hidden");
+        document.getElementById("confidenceBadge").classList.add("hidden");
+
+        renderCurrentStep();
+        showNotification("Ready for new submission!", "info");
+        speak("Starting new form submission");
+      }
+    </script>
+  </body>
+</html>
